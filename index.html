@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Learning Level Ordering Engine · Mastering C</title>
+<style>
+:root{--bg:#0a0f1f;--card:#131a33;--line:#252f5c;--txt:#e9edff;--mut:#8d98c6;--a:#5eead4;--b:#818cf8}
+*{box-sizing:border-box}
+body{margin:0;color:var(--txt);background:radial-gradient(900px 500px at 85% -5%,#27358a66,transparent),var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:1040px;margin:auto;padding:28px 16px 64px}
+header{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+header>div:first-child{flex:1;min-width:240px}
+h1{margin:0;font-size:clamp(24px,4.5vw,36px);letter-spacing:-.02em}
+h1 i{font-style:normal;background:linear-gradient(90deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--mut);margin:6px 0 0}
+.ring{--p:0;width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--a) calc(var(--p)*1%),var(--line) 0)}
+.ring b{width:72px;height:72px;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-size:20px}
+.hero{margin:24px 0;padding:18px 20px;border:1px solid var(--a);border-radius:16px;background:linear-gradient(135deg,#0d2d3c,#1b2150);display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.hero small{color:var(--a);letter-spacing:.12em;text-transform:uppercase;font-size:11px}
+.hero h2{margin:2px 0;font-size:22px}
+button{font:inherit;color:inherit;cursor:pointer}
+.go,.reset{border-radius:10px;padding:10px 16px;font-weight:600;border:0}
+.go{background:linear-gradient(90deg,var(--a),var(--b));color:#06101f}
+.reset{background:transparent;border:1px solid var(--line);color:var(--mut);padding:6px 12px;font-weight:400}
+.lane{display:flex;gap:12px;margin:10px 0}
+.lv{flex:0 0 52px;display:grid;place-items:center;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--mut);font-weight:700}
+.cards{display:flex;flex-wrap:wrap;gap:10px;flex:1}
+.card{--c:var(--a);flex:1 1 220px;max-width:340px;text-align:left;padding:12px 14px;border-radius:12px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c);display:flex;flex-direction:column;gap:2px;transition:.15s}
+.card:hover{transform:translateY(-2px);border-color:var(--c)}
+.card small,.m{color:var(--mut)}.m{font-size:12px}
+.card em{font-size:12px;color:#fbbf24}
+.card.lock{opacity:.45}
+.card.done{background:#10302e}
+.card.done b::before{content:"✓ ";color:var(--a)}
+.card.now{box-shadow:0 0 0 2px var(--a),0 8px 30px #5eead433}
+.Foundations{--c:#5eead4}.Core{--c:#818cf8}.Memory{--c:#f472b6}.Craft{--c:#fbbf24}.Advanced{--c:#fb923c}.Pro{--c:#c084fc}
+.body{flex:1;min-width:0}
+h3{margin:0;font-size:18px}
+.ex{margin:2px 0 12px;color:var(--mut)}
+details.q{margin-top:12px;padding:10px 14px;border-radius:12px;border:1px dashed var(--b);background:#0f1530}
+summary{cursor:pointer;font-weight:600}
+details p{margin:8px 0 0;color:var(--a)}
+.exam{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px}
+.part{background:#0f1530;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.part p{margin:6px 0}
+.part label{display:block;padding:6px 8px;margin:4px 0;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px}
+.part label:hover{border-color:var(--b)}
+.part .go{margin-top:6px;padding:8px 14px}
+textarea{width:100%;height:190px;margin:6px 0;background:#070b18;color:#d6e2ff;border:1px solid var(--line);border-radius:8px;padding:10px;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;tab-size:4;resize:vertical}
+.res{color:var(--a);font-size:13px}
+.lockmsg{margin-top:10px;color:var(--mut)}
+footer{margin-top:30px;color:var(--mut);font-size:13px}
+code{background:var(--card);padding:2px 6px;border-radius:6px}
+</style></head><body>
+<div class="wrap">
+<header><div><h1>Learning Level <i>Ordering Engine</i></h1>
+<p class="sub">Mastering C: levels, prerequisites and priorities computed by a C engine.</p>
+<p class="sub" id="stats"></p></div>
+<div class="ring" id="ring"><b id="pct">0%</b></div></header>
+<div class="hero" id="hero"></div>
+<main id="lanes"></main>
+<footer>Engine: <code>engine.c</code> · Kahn’s algorithm builds the levels · code is judged by the C engine when run locally (<code>./engine --serve</code>) or by the Judge0 online runner on a hosted site · <button class="reset" id="reset">Reset progress</button></footer>
+</div>
+<script src="data.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const STARTER='#include <stdio.h>\n\nint main(void) {\n    \n    return 0;\n}\n';
+let S={theory:0,code:0},MODE='static';const drafts={},picks={},msg={};
+/*RUNNER*/
+const RUNNER={url:'https://ce.judge0.com',headers:{}};  // swap in your own Judge0 (or RapidAPI + key) if the public one is busy
+const load=()=>{try{return JSON.parse(localStorage.getItem('lle-progress'))||{theory:0,code:0}}catch(e){return{theory:0,code:0}}};
+const store=()=>{try{localStorage.setItem('lle-progress',JSON.stringify(S))}catch(e){}};
+let LANG;const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function j0(path,body){
+  const r=await fetch(RUNNER.url+path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json',...RUNNER.headers}:{...RUNNER.headers},body:body&&JSON.stringify(body)});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+async function remote(l,code){
+  const V=DATA.levels[l-1];
+  if(!V.tests)return{ok:false,msg:'This data.js has no tests. Run: ./engine --static > data.js'};
+  try{
+    LANG=LANG||(await j0('/languages')).filter(x=>/^C \(GCC/.test(x.name)).pop().id;
+    let pass=0,first=0,why='';
+    for(let k=0;k<V.tests.length;k++){
+      const {token}=await j0('/submissions?base64_encoded=false',{language_id:LANG,source_code:code,stdin:V.tests[k].i,cpu_time_limit:2});
+      let x={status:{id:1}};
+      for(let n=0;n<25&&x.status.id<3;n++){await sleep(700);x=await j0(`/submissions/${token}?base64_encoded=false`)}
+      if(x.status.id<3)throw new Error('timed out');
+      if(x.status.id==6){const e=(x.compile_output||'').split('\n');return{ok:false,msg:'Compile error: '+(e.find(s=>/error/.test(s))||e[0]).slice(0,200)}}
+      if(x.status.id==3&&(x.stdout||'').trimEnd()===V.tests[k].o.trimEnd())pass++;
+      else if(!first){first=k+1;why=x.status.id==3?'wrong output':x.status.description}
+    }
+    const ok=pass==V.tests.length;
+    return{ok,msg:ok?`All ${pass} tests passed.`:`${pass}/${V.tests.length} tests passed. First failure: test ${first} (${why}).`};
+  }catch(e){return{ok:false,msg:`Online runner unreachable (${e.message}). Try again later, or set RUNNER.url to your own Judge0.`}}
+}
+/*END*/
+
+const bit=(m,l)=>(m>>(l-1))&1,cleared=l=>bit(S.theory,l)&&bit(S.code,l),unlocked=l=>l==1||cleared(l-1);
+async function api(p,b){try{const r=await fetch(p,{method:b===undefined?'GET':'POST',body:b,headers:{'X-LLE':'1'}});return await r.json()}catch(e){return null}}
+async function sync(){const s=await api('/api/state');MODE=s?'local':'static';S=s||load();render()}
+function exam(l,v){
+  return `<div class="exam"><div class="part"><b>${bit(S.theory,l)?'✅':'🧠'} Theory</b><p>${esc(v.q)}</p>`
+   +v.opts.map((o,k)=>`<label><input type="radio" name="q${l}" value="${k}" ${picks[l]===k?'checked':''}> ${esc(o)}</label>`).join('')
+   +`<button class="go" data-quiz="${l}">Check answer</button><p class="res">${esc(msg['t'+l]||'')}</p></div>`
+   +`<div class="part"><b>${bit(S.code,l)?'✅':'💻'} Coding challenge</b><p>${esc(v.task)}</p><textarea data-code="${l}" spellcheck="false">${esc(drafts[l]||STARTER)}</textarea><button class="go" data-run="${l}">Compile &amp; run tests</button><p class="res">${esc(msg['c'+l]||'')}</p></div></div>`;
+}
+function render(off){
+  const T=DATA.topics,V=DATA.levels,n=V.filter((_,i)=>cleared(i+1)).length,pct=Math.round(n/V.length*100),cur=V.findIndex((_,i)=>!cleared(i+1));
+  $('ring').style.setProperty('--p',pct);$('pct').textContent=pct+'%';
+  $('stats').textContent=`${n}/${V.length} levels cleared · ${T.filter(t=>cleared(t.level)).length}/${T.length} topics mastered · ${MODE=='local'?'judged by the C engine':'progress saved in this browser'}`;
+  $('hero').innerHTML=off?'<div><small>Engine offline</small><h2>Start the C engine to take exams</h2><span class="m">Run <code>./engine --serve</code> and open <code>http://localhost:8080</code></span></div>':cur<0?'<h2>🏆 Every gate cleared. You have earned your C.</h2>':`<div><small>Current gate · Level ${cur+1}</small><h2>${esc(V[cur].title)}</h2><span class="m">Pass the theory question and the coding challenge to unlock the next level.</span></div>`;
+  $('lanes').innerHTML=V.map((v,i)=>{const l=i+1,ok=cleared(l);
+    const cards=T.filter(t=>t.level==l).map(t=>`<div class="card ${t.track} ${ok?'done':unlocked(l)?'open':'lock'}"><small>#${t.order} · ${t.track}</small><b>${esc(t.name)}</b><span class="m">difficulty ${t.diff}/9 · ${t.hours}h · unlocks ${t.unlocks}</span></div>`).join('');
+    const body=ok?'<p class="res">✅ Level cleared: theory and code both passed.</p>':unlocked(l)?exam(l,v):`<p class="lockmsg">🔒 Clear Level ${l-1} to unlock this exam.</p>`;
+    return `<section class="lane"><div class="lv">L${l}</div><div class="body"><h3>${esc(v.title)}</h3><p class="ex">${esc(v.explain)}</p><div class="cards">${cards}</div>${body}</div></section>`}).join('');
+}
+document.body.addEventListener('click',async e=>{
+  const d=e.target.dataset;
+  if(d.quiz){const k=document.querySelector(`input[name=q${d.quiz}]:checked`);if(!k)return;picks[d.quiz]=+k.value;
+    const v=DATA.levels[d.quiz-1];
+    if(MODE!='local'&&v.ans===undefined){msg['t'+d.quiz]='This data.js has no answers. Run: ./engine --static > data.js';return render()}
+    const x=MODE=='local'?await api(`/api/quiz?l=${d.quiz}&c=${k.value}`,''):{ok:+k.value===v.ans,answer:v.opts[v.ans]};
+    if(MODE!='local'&&x.ok){S.theory|=1<<(d.quiz-1);store()}
+    msg['t'+d.quiz]=x?(x.ok?'Correct. '+x.answer:'Not quite. Think again and retry.'):'Engine offline.';await sync()}
+  if(d.run){msg['c'+d.run]='Compiling and running tests…';render();
+    const code=drafts[d.run]||STARTER,x=MODE=='local'?await api(`/api/code?l=${d.run}`,code):await remote(d.run,code);
+    if(MODE!='local'&&x&&x.ok){S.code|=1<<(d.run-1);store()}
+    msg['c'+d.run]=x?x.msg:'Engine offline.';await sync()}
+  if(e.target.id=='reset'){if(MODE=='local')await api('/api/reset','');else{S={theory:0,code:0};store()}Object.keys(msg).forEach(k=>delete msg[k]);await sync()}
+});
+document.body.addEventListener('input',e=>{if(e.target.dataset.code)drafts[e.target.dataset.code]=e.target.value});
+document.body.addEventListener('keydown',e=>{if(e.key=='Tab'&&e.target.dataset.code){e.preventDefault();document.execCommand('insertText',false,'    ')}});
+render();sync();
+</script></body></html>
